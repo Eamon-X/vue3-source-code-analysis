@@ -1,28 +1,10 @@
 import { isObject } from "@vue/shared";
-
-export function reactive(target) {
-  return createReactiveObject(target);
-}
+import { mutableHandlers, ReactiveFlags } from "./baseHandler";
 
 // 用于级联我们的代理后的结果，可以复用
 // WeakMap 弱引用，防止内存泄漏
 const reactiveMap = new WeakMap();
 
-enum ReactiveFlags {
-    IS_REACTIVE = "__v_isReactive", // 去这个名字是为了尽量复杂，基本唯一
-}
-
-const mutableHandlers: ProxyHandler<any> = {
-  get(target, key, receiver) {
-    // 数据劫持，如果key是__v_isReactive，则返回true
-    if (key === ReactiveFlags.IS_REACTIVE) {
-      return true;
-    }
-  },
-  set(target, key, value, receiver) {
-    return true;
-  },
-};
 function createReactiveObject(target) {
   // Proxy 接收 Object
   if (!isObject(target)) return target;
@@ -40,5 +22,9 @@ function createReactiveObject(target) {
   return proxy;
 }
 
-// 1. 保证数据不被重复代理
-// 2. 如果对象已经被代理过了，不重复代理
+// 1. 如果对象已经被代理过了，不重复代理
+// 2. 如果已经是代理对象，不重复代理
+
+export function reactive(target) {
+  return createReactiveObject(target);
+}
