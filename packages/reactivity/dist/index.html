@@ -9,15 +9,21 @@
     <div id="app"></div>
     <script type="module">
       import { reactive, effect } from "./reactivity-esm.js";
+      // import {
+      //   reactive,
+      //   effect,
+      // } from "/node_modules/vue/dist/vue.esm-browser.js";
+
       const obj = { name: "jw", age: 30 };
       const state = reactive(obj);
       const state1 = reactive(obj);
       // 如果state1被代理过，一定有get和set方法
       const state2 = reactive(state1);
-      console.log(obj);
+      console.log(state);
       console.log(state1 === state2);
+      console.log(app);
       effect(() => {
-        app.innerHTHL = `姓名${state.name}年龄${state.age}`;
+        app.innerHTML = `姓名${state.name}年龄${state.age}`;
       });
       setTimeout(() => state.age++, 1888); //数据变化后effect会再次重新执行
     </script>
