@@ -13,6 +13,8 @@ export function effect(fn, options?) {
 export let activeEffect; // 解决嵌套effect时的依赖关系混乱的问题
 class ReactiveEffect {
   _trackId = 0; // 用于记录当前effect执行了几次
+  deps = []; // 用于记录存放了哪些依赖
+  _depsLength = 0; // 用于记录当前effect依赖的个数
   public active = true; // 控制创建的effect是否是响应式的，effectScope.stop() 停止所有的effect 不参加响应式处理
   // fn是用户编写的函数
   // 如果fn中依赖的数据发生变化后，就重新调用scheduler，即重新执行run函数
@@ -51,5 +53,25 @@ class ReactiveEffect {
  * - 使用 `dep.set(effect, effect._trackId)` 来记录 effect 的执行次数或状态，避免重复添加相同的 effect。
  */
 export function trackEffect(effect, dep) {
-  dep.set(effect, effect._trackId);
+  // 双向记忆
+
+  dep.set(effect, effect._trackId); // 记录 effect 到依赖集合(收集器)中
+  // 记录effect里有哪些收集器
+  effect.deps[effect._depsLength++] = dep; // （反向记录，用于 cleanup）
+}
+
+/**
+ * 触发依赖项中的所有副作用函数
+ *
+ * 此函数通过遍历给定的依赖项数组，并执行其中的每一个副作用函数，来实现响应式更新
+ * 它主要用于在数据变化时，执行相关的更新操作，以保持视图和状态的一致性
+ *
+ * @param dep 一个包含所有相关副作用函数的数组当依赖项中的任何一个值发生变化时，所有副作用函数都会被触发
+ */
+export function triggerEffects(dep) {
+  for (const effect of dep.keys()) {
+    if (effect.scheduler) {
+      effect.scheduler(); // 相当于 effect.run();
+    }
+  }
 }
