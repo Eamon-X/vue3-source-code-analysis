@@ -2,6 +2,8 @@ import { activeEffect, trackEffect, triggerEffects } from "./effect";
 
 const targetMap = new WeakMap(); // 存放依赖收集的关系
 
+// type Dep = Map<ReactiveEffect, number> // 依赖集合
+// type TargetMap = WeakMap<Object, Map<string, Dep>> // 全局依赖存储
 /**
  * 用于创建Map
  * @param cleanup 这个是清理方法，用于清理不需要的属性

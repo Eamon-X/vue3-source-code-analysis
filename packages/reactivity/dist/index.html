@@ -14,18 +14,38 @@
       //   effect,
       // } from "/node_modules/vue/dist/vue.esm-browser.js";
 
-      const obj = { name: "jw", age: 30 };
+      // 依赖收集
+
+      // const obj = { name: "jw", age: 30 };
+      // const state = reactive(obj);
+      // const state1 = reactive(obj);
+      // // 如果state1被代理过，一定有get和set方法
+      // const state2 = reactive(state1);
+      // console.log(state);
+      // console.log(state1 === state2);
+      // console.log(app);
+      // effect(() => {
+      //   app.innerHTML = `姓名${state.name}年龄${state.age}`;
+      // });
+      // setTimeout(() => state.age++, 1888); //数据变化后effect会再次重新执行
+
+      // 依赖清理
+
+      const obj = { name: "jw", age: 30, flag: true };
       const state = reactive(obj);
-      const state1 = reactive(obj);
-      // 如果state1被代理过，一定有get和set方法
-      const state2 = reactive(state1);
-      console.log(state);
-      console.log(state1 === state2);
-      console.log(app);
+      // 问题：
+      // 当flag为true时，{obj: {flag: {effect}, name: {effect}}}，只收集到两个属性
+      // 当flag为false时，会再收集age属性 {obj: {flag: {effect}, name: {effect}, age: {effect}}} , 此时不应该还保留name属性的收集
+      // 因为会导致即使name属性已经不再被渲染时，但name属性的更新仍然会重新触发effect
+      // 需要一个简易的diff算法来比对不同flag状态的时候的差异
       effect(() => {
-        app.innerHTML = `姓名${state.name}年龄${state.age}`;
+        console.log("effect");
+        app.innerHTML = state.flag ? `姓名${state.name}` : `年龄${state.age}`;
       });
-      setTimeout(() => state.age++, 1888); //数据变化后effect会再次重新执行
+      setTimeout(() => {
+        state.flag = !state.flag;
+        setTimeout(() => (state.name = "ea"), 1888); // 如果没有清理依赖，name的更新还是会触发effect
+      }, 1888); //数据变化后effect会再次重新执行
     </script>
   </body>
 </html>

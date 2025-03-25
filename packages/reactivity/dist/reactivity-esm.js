@@ -6,6 +6,21 @@ function effect(fn, options) {
   _effect.run();
 }
 var activeEffect;
+function preCleanEffect(effect2) {
+  effect2._depsLength = 0;
+  effect2._trackId++;
+  for (let i = 0; i < effect2._depsLength; i++) {
+    effect2.deps[i].delete(effect2);
+  }
+}
+function postCleanEffect(effect2) {
+  if (effect2.deps.length > effect2._depsLength) {
+    for (let i = effect2._depsLength; i < effect2.deps.length; i++) {
+      cleanDepEffect(effect2.deps[i], effect2);
+    }
+    effect2.deps.length = effect2._depsLength;
+  }
+}
 var ReactiveEffect = class {
   // 控制创建的effect是否是响应式的，effectScope.stop() 停止所有的effect 不参加响应式处理
   // fn是用户编写的函数
@@ -14,7 +29,7 @@ var ReactiveEffect = class {
     this.fn = fn;
     this.scheduler = scheduler;
     this._trackId = 0;
-    // 用于记录当前effect执行了几次
+    // 用于记录当前effect执行了几次（防止一个属性在当前effect中多次收集依赖，确保只收集一次）
     this.deps = [];
     // 用于记录存放了哪些依赖
     this._depsLength = 0;
@@ -28,8 +43,10 @@ var ReactiveEffect = class {
     let lastEffect = activeEffect;
     try {
       activeEffect = this;
+      preCleanEffect(this);
       return this.fn();
     } finally {
+      postCleanEffect(this);
       activeEffect = lastEffect;
     }
   }
@@ -37,9 +54,25 @@ var ReactiveEffect = class {
   stop() {
   }
 };
+function cleanDepEffect(dep, effect2) {
+  dep.delete(effect2);
+  if (dep.size === 0) {
+    dep.cleanup();
+  }
+}
 function trackEffect(effect2, dep) {
-  dep.set(effect2, effect2._trackId);
-  effect2.deps[effect2._depsLength++] = dep;
+  if (dep.get(effect2) !== effect2._trackId) {
+    dep.set(effect2, effect2._trackId);
+    let oldDep = effect2.deps[effect2._depsLength];
+    if (oldDep !== dep) {
+      if (oldDep) {
+        cleanDepEffect(oldDep, effect2);
+      }
+      effect2.deps[effect2._depsLength++] = dep;
+    } else {
+      effect2._depsLength++;
+    }
+  }
 }
 function triggerEffects(dep) {
   for (const effect2 of dep.keys()) {

@@ -11,8 +11,26 @@ export function effect(fn, options?) {
   _effect.run();
 }
 export let activeEffect; // 解决嵌套effect时的依赖关系混乱的问题
+function preCleanEffect(effect: ReactiveEffect) {
+  effect._depsLength = 0;
+  effect._trackId++; // 每次执行effect，trackId自增，如果当前同一个effect执行， id就是相同的
+  // 清空依赖
+  for (let i = 0; i < effect._depsLength; i++) {
+    effect.deps[i].delete(effect);
+  }
+}
+
+function postCleanEffect(effect: ReactiveEffect) {
+  if (effect.deps.length > effect._depsLength) {
+    // 遍历effect.deps，将effect从所有依赖中移除
+    for (let i = effect._depsLength; i < effect.deps.length; i++) {
+      cleanDepEffect(effect.deps[i], effect); // 删除映射表中多余的effect
+    }
+    effect.deps.length = effect._depsLength; // 更新依赖列表的长度
+  }
+}
 class ReactiveEffect {
-  _trackId = 0; // 用于记录当前effect执行了几次
+  _trackId = 0; // 用于记录当前effect执行了几次（防止一个属性在当前effect中多次收集依赖，确保只收集一次）
   deps = []; // 用于记录存放了哪些依赖
   _depsLength = 0; // 用于记录当前effect依赖的个数
   public active = true; // 控制创建的effect是否是响应式的，effectScope.stop() 停止所有的effect 不参加响应式处理
@@ -30,14 +48,25 @@ class ReactiveEffect {
       // 当用户编写的函数中，读取了响应式属性的时候，就会执行get方法
       // get方法中会收集依赖
       activeEffect = this; // 解决嵌套effect时的依赖关系混乱的问题
+
+      // effect重新执行前，需要将上一次的依赖清空
+      preCleanEffect(this);
       return this.fn(); // 执行传入的函数，并把返回值返回
     } finally {
+      postCleanEffect(this);
       activeEffect = lastEffect; // 解决嵌套effect时的依赖关系混乱的问题
     }
   }
   // 停止侦听
   stop() {
     /* 从所有依赖中移除自身 */
+  }
+}
+
+function cleanDepEffect(dep, effect) {
+  dep.delete(effect);
+  if (dep.size === 0) {
+    dep.cleanup(); // 如果map为空，则删除这个属性
   }
 }
 
@@ -53,11 +82,28 @@ class ReactiveEffect {
  * - 使用 `dep.set(effect, effect._trackId)` 来记录 effect 的执行次数或状态，避免重复添加相同的 effect。
  */
 export function trackEffect(effect, dep) {
-  // 双向记忆
+  // 需要重新收集依赖，将不需要的移除掉
+  if (dep.get(effect) !== effect._trackId) {
+    // 优化多余的收集
+    dep.set(effect, effect._trackId); // 记录 effect 到依赖集合(收集器)中
+    let oldDep = effect.deps[effect._depsLength];
+    // 拿到上一次依赖的最后一个和这次的比较
+    if (oldDep !== dep) {
+      if (oldDep) {
+        // 删除老的依赖
+        cleanDepEffect(oldDep, effect);
+      }
+      // 记录新的依赖
+      effect.deps[effect._depsLength++] = dep; // 永远按照本次最新的属性和顺序来存放（反向记录，用于 cleanup）
+    } else {
+      effect._depsLength++;
+    }
+  }
 
-  dep.set(effect, effect._trackId); // 记录 effect 到依赖集合(收集器)中
-  // 记录effect里有哪些收集器
-  effect.deps[effect._depsLength++] = dep; // （反向记录，用于 cleanup）
+  // // 双向记忆
+  // dep.set(effect, effect._trackId); // 记录 effect 到依赖集合(收集器)中
+  // // 记录effect里有哪些收集器
+  // effect.deps[effect._depsLength++] = dep; // （反向记录，用于 cleanup）
 }
 
 /**
