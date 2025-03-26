@@ -31,20 +31,42 @@
 
       // 依赖清理
 
+      // const obj = { name: "jw", age: 30, flag: true };
+      // const state = reactive(obj);
+      // // 问题：
+      // // 当flag为true时，{obj: {flag: {effect}, name: {effect}}}，只收集到两个属性
+      // // 当flag为false时，会再收集age属性 {obj: {flag: {effect}, name: {effect}, age: {effect}}} , 此时不应该还保留name属性的收集
+      // // 因为会导致即使name属性已经不再被渲染时，但name属性的更新仍然会重新触发effect
+      // // 需要一个简易的diff算法来比对不同flag状态的时候的差异
+      // effect(() => {
+      //   console.log("effect");
+      //   app.innerHTML = state.flag ? `姓名${state.name}` : `年龄${state.age}`;
+      // });
+      // setTimeout(() => {
+      //   state.flag = !state.flag;
+      //   setTimeout(() => (state.name = "ea"), 1888); // 如果没有清理依赖，name的更新还是会触发effect
+      // }, 1888); //数据变化后effect会再次重新执行
+
+      // 调度实现
+
       const obj = { name: "jw", age: 30, flag: true };
       const state = reactive(obj);
-      // 问题：
-      // 当flag为true时，{obj: {flag: {effect}, name: {effect}}}，只收集到两个属性
-      // 当flag为false时，会再收集age属性 {obj: {flag: {effect}, name: {effect}, age: {effect}}} , 此时不应该还保留name属性的收集
-      // 因为会导致即使name属性已经不再被渲染时，但name属性的更新仍然会重新触发effect
-      // 需要一个简易的diff算法来比对不同flag状态的时候的差异
-      effect(() => {
-        console.log("effect");
-        app.innerHTML = state.flag ? `姓名${state.name}` : `年龄${state.age}`;
-      });
+      const runner = effect(
+        () => {
+          console.log("effect");
+          app.innerHTML = state.flag ? `姓名${state.name}` : `年龄${state.age}`;
+        },
+        {
+          scheduler: () => {
+            console.log("页面更新后不自动重新渲染，走自定义逻辑"); // AOP编程，切片编程，在原有的逻辑基础上增加额外的逻辑
+            runner(); // 重新渲染
+          },
+        }
+      );
+      console.log(runner);
+      console.log(runner.effect);
       setTimeout(() => {
         state.flag = !state.flag;
-        setTimeout(() => (state.name = "ea"), 1888); // 如果没有清理依赖，name的更新还是会触发effect
       }, 1888); //数据变化后effect会再次重新执行
     </script>
   </body>

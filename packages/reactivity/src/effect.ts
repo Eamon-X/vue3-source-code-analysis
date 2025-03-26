@@ -9,6 +9,15 @@ export function effect(fn, options?) {
 
   // 默认先执行一次
   _effect.run();
+
+  // 用传入的options里的scheduler，覆盖默认的scheduler
+  if (options) {
+    Object.assign(_effect, options);
+  }
+
+  const runner = _effect.run.bind(_effect); // bind方法把this实在指向_effect
+  runner.effect = _effect; // 可以在run方法上获取到effect的引用  //函数本质上也是对象，所以可以给函数添加属性。
+  return runner; // 用户可以自己执行run方法
 }
 export let activeEffect; // 解决嵌套effect时的依赖关系混乱的问题
 function preCleanEffect(effect: ReactiveEffect) {
@@ -117,7 +126,7 @@ export function trackEffect(effect, dep) {
 export function triggerEffects(dep) {
   for (const effect of dep.keys()) {
     if (effect.scheduler) {
-      effect.scheduler(); // 相当于 effect.run();
+      effect.scheduler(); // 相当于 effect.run()，不直接写effect.run()的原因是用户能够自定义scheduler
     }
   }
 }
