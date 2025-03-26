@@ -69,14 +69,25 @@
       //   state.flag = !state.flag;
       // }, 1888); //数据变化后effect会再次重新执行
 
-      // 防止递归调用
+      // // 防止递归调用
 
-      const obj = { name: "jw", age: 30, flag: true };
+      // const obj = { name: "jw", age: 30, flag: true };
+      // const state = reactive(obj);
+      // const runner = effect(() => {
+      //   app.innerHTML = `年龄${state.age}`;
+      //   state.age = Math.random(); // 如未做处理，会导致本次执行完effect后，再次执行effect，导致死循环
+      // });
+
+      // 深度代理
+
+      const obj = { name: "jw", age: 30, address: { city: "北京" } };
       const state = reactive(obj);
       const runner = effect(() => {
-        app.innerHTML = `年龄${state.age}`;
-        state.age = Math.random(); // 如未做处理，会导致本次执行完effect后，再次执行effect，导致死循环
+        app.innerHTML = `城市${state.address.city}`;
       });
+      setTimeout(() => {
+        state.address.city = "杭州";
+      }, 1888);
     </script>
   </body>
 </html>
