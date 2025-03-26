@@ -40,9 +40,11 @@ function postCleanEffect(effect: ReactiveEffect) {
 }
 class ReactiveEffect {
   _trackId = 0; // 用于记录当前effect执行了几次（防止一个属性在当前effect中多次收集依赖，确保只收集一次）
-  deps = []; // 用于记录存放了哪些依赖
   _depsLength = 0; // 用于记录当前effect依赖的个数
+  _running = 0; // 是否正在运行
+  deps = []; // 用于记录存放了哪些依赖
   public active = true; // 控制创建的effect是否是响应式的，effectScope.stop() 停止所有的effect 不参加响应式处理
+
   // fn是用户编写的函数
   // 如果fn中依赖的数据发生变化后，就重新调用scheduler，即重新执行run函数
   constructor(public fn, public scheduler) {}
@@ -60,8 +62,11 @@ class ReactiveEffect {
 
       // effect重新执行前，需要将上一次的依赖清空
       preCleanEffect(this);
+
+      this._running++; // 防止递归循环调用
       return this.fn(); // 执行传入的函数，并把返回值返回
     } finally {
+      this._running--; // 防止递归循环调用
       postCleanEffect(this);
       activeEffect = lastEffect; // 解决嵌套effect时的依赖关系混乱的问题
     }
@@ -125,8 +130,11 @@ export function trackEffect(effect, dep) {
  */
 export function triggerEffects(dep) {
   for (const effect of dep.keys()) {
-    if (effect.scheduler) {
-      effect.scheduler(); // 相当于 effect.run()，不直接写effect.run()的原因是用户能够自定义scheduler
+    if (!effect._running) {
+      // 如果不是正在执行，才能执行
+      if (effect.scheduler) {
+        effect.scheduler(); // 相当于 effect.run()，不直接写effect.run()的原因是用户能够自定义scheduler
+      }
     }
   }
 }

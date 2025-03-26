@@ -47,27 +47,36 @@
       //   setTimeout(() => (state.name = "ea"), 1888); // 如果没有清理依赖，name的更新还是会触发effect
       // }, 1888); //数据变化后effect会再次重新执行
 
-      // 调度实现
+      // // 调度实现
+
+      // const obj = { name: "jw", age: 30, flag: true };
+      // const state = reactive(obj);
+      // const runner = effect(
+      //   () => {
+      //     console.log("effect");
+      //     app.innerHTML = state.flag ? `姓名${state.name}` : `年龄${state.age}`;
+      //   },
+      //   {
+      //     scheduler: () => {
+      //       console.log("页面更新后不自动重新渲染，走自定义逻辑"); // AOP编程，切片编程，在原有的逻辑基础上增加额外的逻辑
+      //       runner(); // 重新渲染
+      //     },
+      //   }
+      // );
+      // console.log(runner);
+      // console.log(runner.effect);
+      // setTimeout(() => {
+      //   state.flag = !state.flag;
+      // }, 1888); //数据变化后effect会再次重新执行
+
+      // 防止递归调用
 
       const obj = { name: "jw", age: 30, flag: true };
       const state = reactive(obj);
-      const runner = effect(
-        () => {
-          console.log("effect");
-          app.innerHTML = state.flag ? `姓名${state.name}` : `年龄${state.age}`;
-        },
-        {
-          scheduler: () => {
-            console.log("页面更新后不自动重新渲染，走自定义逻辑"); // AOP编程，切片编程，在原有的逻辑基础上增加额外的逻辑
-            runner(); // 重新渲染
-          },
-        }
-      );
-      console.log(runner);
-      console.log(runner.effect);
-      setTimeout(() => {
-        state.flag = !state.flag;
-      }, 1888); //数据变化后effect会再次重新执行
+      const runner = effect(() => {
+        app.innerHTML = `年龄${state.age}`;
+        state.age = Math.random(); // 如未做处理，会导致本次执行完effect后，再次执行effect，导致死循环
+      });
     </script>
   </body>
 </html>

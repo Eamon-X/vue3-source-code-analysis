@@ -36,10 +36,12 @@ var ReactiveEffect = class {
     this.scheduler = scheduler;
     this._trackId = 0;
     // 用于记录当前effect执行了几次（防止一个属性在当前effect中多次收集依赖，确保只收集一次）
-    this.deps = [];
-    // 用于记录存放了哪些依赖
     this._depsLength = 0;
     // 用于记录当前effect依赖的个数
+    this._running = 0;
+    // 是否正在运行
+    this.deps = [];
+    // 用于记录存放了哪些依赖
     this.active = true;
   }
   run() {
@@ -50,8 +52,10 @@ var ReactiveEffect = class {
     try {
       activeEffect = this;
       preCleanEffect(this);
+      this._running++;
       return this.fn();
     } finally {
+      this._running--;
       postCleanEffect(this);
       activeEffect = lastEffect;
     }
@@ -82,8 +86,10 @@ function trackEffect(effect2, dep) {
 }
 function triggerEffects(dep) {
   for (const effect2 of dep.keys()) {
-    if (effect2.scheduler) {
-      effect2.scheduler();
+    if (!effect2._running) {
+      if (effect2.scheduler) {
+        effect2.scheduler();
+      }
     }
   }
 }
