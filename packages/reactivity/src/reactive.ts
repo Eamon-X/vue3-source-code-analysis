@@ -28,3 +28,8 @@ function createReactiveObject(target) {
 export function reactive(target) {
   return createReactiveObject(target);
 }
+
+export function toReactive(value) {
+  // 如果传入的是对象，则通过reactive代理
+  return isObject(value) ? reactive(value) : value;
+}
